@@ -95,6 +95,7 @@ user_query = st.session_state.pending_query if run_now else ""
 # Reset the trigger so a page refresh doesn't re-execute
 if run_now:
     st.session_state.run_now = False
+    st.session_state.pending_query = ""  # clear so text box resets after execution
 
 if run_now and user_query:
     st.divider()
