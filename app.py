@@ -51,6 +51,25 @@ st.markdown(
     "The agent generates validated SQL, reflects on errors, and renders dynamic visualizations."
 )
 
+# ── Session state bootstrap ──────────────────────────────────────────────────
+if "pending_query" not in st.session_state:
+    st.session_state.pending_query = ""
+if "run_now" not in st.session_state:
+    st.session_state.run_now = False
+
+# Sample question pills (above the form so they fire on the SAME rerun)
+st.markdown("**Sample queries:**")
+sample_cols = st.columns(3)
+if sample_cols[0].button("📋 Show all orders", use_container_width=True):
+    st.session_state.pending_query = "Show all order IDs and their dates"
+    st.session_state.run_now = True
+if sample_cols[1].button("🔢 Count total orders", use_container_width=True):
+    st.session_state.pending_query = "How many total orders are there"
+    st.session_state.run_now = True
+if sample_cols[2].button("🛡️ Test blocked DROP query", use_container_width=True):
+    st.session_state.pending_query = "DROP TABLE orders; -- malicious"
+    st.session_state.run_now = True
+
 # User Query Input Form
 with st.form("query_form", clear_on_submit=False):
     col1, col2 = st.columns([5, 1])
@@ -58,25 +77,26 @@ with st.form("query_form", clear_on_submit=False):
         user_query = st.text_input(
             "Enter your database question:",
             placeholder="e.g. Show all order IDs and their dates",
+            value=st.session_state.pending_query,
             label_visibility="collapsed",
         )
     with col2:
         submitted = st.form_submit_button("Run Query", use_container_width=True)
 
-# Sample question pills
-st.markdown("**Sample queries:**")
-sample_cols = st.columns(3)
-if sample_cols[0].button("📋 Show all orders", use_container_width=True):
-    user_query = "Show all orders"
-    submitted = True
-if sample_cols[1].button("🔢 Count total orders", use_container_width=True):
-    user_query = "How many total orders are there"
-    submitted = True
-if sample_cols[2].button("🛡️ Test blocked DROP query", use_container_width=True):
-    user_query = "DROP TABLE orders; -- malicious"
-    submitted = True
-
+# When the form is submitted manually, store it in session state
 if submitted and user_query:
+    st.session_state.pending_query = user_query
+    st.session_state.run_now = True
+
+# Determine final query to run
+run_now = st.session_state.run_now
+user_query = st.session_state.pending_query if run_now else ""
+
+# Reset the trigger so a page refresh doesn't re-execute
+if run_now:
+    st.session_state.run_now = False
+
+if run_now and user_query:
     st.divider()
     with st.spinner("Processing query via LangGraph agent..."):
         state = run_query(user_query)
